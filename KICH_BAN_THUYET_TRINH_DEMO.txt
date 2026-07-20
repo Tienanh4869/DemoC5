@@ -1,0 +1,88 @@
+================================================================================
+KỊCH BẢN THUYẾT TRÌNH VÀ THAO TÁC DEMO ĐỒ ÁN ĐIỆN TOÁN ĐÁM MÂY
+Chủ đề: Bảo mật Chuỗi cung ứng Phần mềm Cloud-Native (SLSA, SBOM Syft, Cosign Sigstore & Zero Trust Kyverno trên Azure AKS)
+================================================================================
+
+PHẦN 0: CHUẨN BỊ TRƯỚC GIỜ BÁO CÁO (Trước 15 phút)
+--------------------------------------------------------------------------------
+1. Mở cửa sổ PowerShell (tại thư mục đồ án C:\Users\tiena\Downloads\DemoC5).
+2. Đăng nhập và kết nối lại với máy chủ đám mây Azure (phòng trường hợp hết phiên):
+   az login --use-device-code
+   az aks get-credentials --resource-group rg-cloud-supply-chain-demo --name aks-supply-chain-demo --overwrite-existing
+
+3. Kiểm tra Pod trên Azure xem đang chạy chưa:
+   kubectl get pods -l app=secure-demo
+   (Nếu thấy trạng thái "Running 1/1" là hệ thống trên Cloud đang hoạt động hoàn hảo).
+
+4. Mở sẵn 3 tab trên trình duyệt Chrome/Edge:
+   - Tab 1: Trang GitHub Repository của bạn (mở tab Actions).
+   - Tab 2: Trang quản trị Azure Portal (https://portal.azure.com), vào Resource Group rg-cloud-supply-chain-demo.
+   - Tab 3: Sẵn sàng để mở link http://localhost:8080.
+
+--------------------------------------------------------------------------------
+PHẦN 1: GIỚI THIỆU ĐỒ ÁN & 3 TRỤ CỘT BẢO MẬT (2 Phút)
+--------------------------------------------------------------------------------
+[LỜI THOẠI]:
+"Kính chào thầy cô trong hội đồng. Hôm nay em xin trình bày đồ án: Xây dựng và Triển khai Bảo mật Chuỗi cung ứng Phần mềm Cloud-Native theo khung tiêu chuẩn quốc tế SLSA, sử dụng công cụ SBOM Syft, chữ ký số Cosign/Sigstore và mô hình Zero Trust trên nền tảng đám mây Microsoft Azure.
+
+Hệ thống của em giải quyết bài toán chống lại các cuộc tấn công chuỗi cung ứng nguy hiểm (như SolarWinds, Log4j) bằng cách thiết lập 3 trụ cột khóa chặt vào nhau:
+1. Khung SLSA & CI/CD tự động bảo vệ môi trường build và gán nhãn xuất xứ Provenance Level 3.
+2. Bảng kê khai SBOM (Syft) minh bạch hóa 100% các gói thư viện, loại bỏ tình trạng hộp đen trong Container.
+3. Chữ ký số mật mã Cosign (Sigstore) đóng dấu bản quyền, niêm phong chống sửa đổi.
+Và cuối cùng, Người gác cổng Kyverno Admission Controller trên máy chủ Azure Kubernetes Service (AKS) thực thi chính sách Zero Trust: chỉ chấp nhận cho chạy các Container có đủ chữ ký hợp lệ và SBOM sạch."
+
+--------------------------------------------------------------------------------
+PHẦN 2: CHỨNG MINH TRỤ CỘT 1 & 2 TRÊN GITHUB ACTIONS (2 Phút)
+--------------------------------------------------------------------------------
+[THAO TÁC MÀN HÌNH]: Mở tab trình duyệt đang ở trang GitHub Actions (slsa-cosign-pipeline.yml). Click vào 1 lần chạy thành công (màu xanh lá).
+
+[LỜI THOẠI]:
+"Thưa thầy cô, đúng như triết lý bảo mật chuỗi cung ứng: 'Mọi quy trình bảo mật phải được tích hợp tự động, không can thiệp thủ công'.
+Khi lập trình viên đẩy mã nguồn lên nhánh main của GitHub, hệ thống CI/CD đã tự động thực thi trọn vẹn 6 bước trên đám mây:
+- Tự động đóng gói (Build and Push) ứng dụng lên Azure Container Registry.
+- Công cụ Syft tự động bóc tách lớp Container Nginx/Alpine để xuất ra bảng SBOM chuẩn SPDX-JSON.
+- Công cụ Cosign tự động lấy Private Key ECDSA từ GitHub Secrets để ký chữ ký số mật mã và đính kèm trực tiếp lên Cloud."
+
+--------------------------------------------------------------------------------
+PHẦN 3: CHỨNG MINH HẠ TẦNG VÀ TẠO TÁC TRÊN AZURE PORTAL (2 Phút)
+--------------------------------------------------------------------------------
+[THAO TÁC MÀN HÌNH]: Chuyển sang tab Azure Portal (portal.azure.com) -> Vào Registry "demobyta" -> Repositories -> cloud-supply-chain-demo -> Click vào tag "v1".
+
+[LỜI THOẠI]:
+"Dưới đây là minh chứng thực tế trên giao diện quản trị đám mây chính chủ của Microsoft Azure:
+Thầy cô có thể thấy bên cạnh Container Image chính (v1), hệ thống đã lưu trữ bảo mật các tạo tác đi kèm mang mã băm sha256. Đây chính là Chữ ký số Cosign (.sig) và Bảng thành phần SBOM (.sbom) đã được niêm phong vĩnh viễn trên đám mây Azure!"
+
+--------------------------------------------------------------------------------
+PHẦN 4: MÀN BIỂU DIỄN ĐỈNH CAO - CHÉM BAY ĐẦU HACKER ZERO TRUST TRÊN AKS (3 Phút)
+--------------------------------------------------------------------------------
+[THAO TÁC MÀN HÌNH]: Mở cửa sổ PowerShell lên trước mặt thầy cô.
+
+[LỜI THOẠI]:
+"Và đây là minh chứng thực chiến quan trọng và đắt giá nhất của đồ án: Khả năng tự động phòng thủ Zero Trust trên máy chủ Kubernetes AKS."
+
+[LỆNH THAO TÁC]: Gõ lệnh thử chạy một Container lạ từ bên ngoài không có chữ ký của nhóm:
+kubectl run hacker-pod --image=nginx:latest
+
+[KẾT QUẢ MÀN HÌNH]: Lỗi đỏ báo lên lập tức:
+Error from server: admission webhook "mutate.kyverno.svc-fail" denied the request... no matching signatures
+
+[LỜI THOẠI CHỐT KỊCH TÍNH]:
+"Thầy cô thấy không ạ? Mặc dù nginx:latest là image chuẩn từ Docker Hub, nhưng vì KHÔNG CÓ CHỮ KÝ MẬT MÃ HỢP LỆ từ Public Key của nhóm em, Người gác cổng Kyverno đã lập tức CHẶN ĐỨNG (DENY) trong 0.1 giây, không cho Pod độc hại có cơ hội sinh ra trên máy chủ!
+Ngược lại, Pod ứng dụng cloud-supply-chain-demo chính chủ của nhóm đã đi qua quy trình kiểm duyệt, xác thực chữ ký khớp 100% nên được phép chạy (ALLOW) và cung cấp dịch vụ cho người dùng."
+
+--------------------------------------------------------------------------------
+PHẦN 5: TRÌNH DIỄN WEB DASHBOARD & KẾT LUẬN (2 Phút)
+--------------------------------------------------------------------------------
+[LỆNH THAO TÁC]: Gõ lệnh mở đường hầm kết nối ra trình duyệt:
+kubectl port-forward service/cloud-supply-chain-demo 8080:80
+
+[THAO TÁC MÀN HÌNH]: Mở trình duyệt vào link http://localhost:8080.
+
+[LỜI THOẠI GIẢI THÍCH (Nếu thầy cô hỏi "Sao ứng dụng Cloud lại xem qua localhost?")]:
+"Dạ thưa thầy cô, máy cá nhân của em không hề cài Docker hay chạy Nginx. Toàn bộ ứng dụng và Pod thực sự đang chạy trên máy chủ đám mây Azure Kubernetes Service (AKS).
+Tuy nhiên, vì lý do bảo mật Zero Trust, cụm AKS cấu hình mạng kín (ClusterIP), không mở cổng Public IP lộ ra ngoài Internet. Để hiển thị giao diện cho thầy cô xem, em dùng lệnh 'kubectl port-forward' tạo một đường hầm mã hóa (Secure Tunnel) dẫn luồng dữ liệu trực tiếp từ Pod trên đám mây Azure về cổng 8080 trên laptop của em ạ!"
+
+[LỜI THOẠI KẾT LUẬN]:
+"Và đây là giao diện Web Dashboard tượng trưng cho kết quả của hệ thống: hiển thị đầy đủ chứng nhận VERIFIED BY AKS POLICY ENGINE, chuẩn xác thực SLSA Level 3, danh sách SBOM Syft và chữ ký Cosign Verified.
+Đồ án đã biến bảo mật chuỗi cung ứng từ một khái niệm trừu tượng thành một hệ thống pháo đài tự động, thực chiến và kiên cố trên đám mây Azure. Em xin chân thành cảm ơn thầy cô đã lắng nghe ạ!"
+================================================================================

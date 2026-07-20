@@ -1,4 +1,4 @@
-﻿# Script 03: Thiết lập Kyverno Policy trên AKS và kiểm thử kịch bản Pass/Fail
+# Script 03: Thiết lập Kyverno Policy trên AKS và kiểm thử kịch bản Pass/Fail
 $ErrorActionPreference = "Continue"
 
 Write-Host "==================================================================" -ForegroundColor Cyan
@@ -97,7 +97,9 @@ spec:
 "@
 Set-Content -Path "policies\deploy-invalid.yaml" -Value $INVALID_YAML
 
-# Case 2: Image hợp lệ đã ký
+# Case 2: Image hợp lệ đã ký (sử dụng SHA256 digest chuẩn xác theo khuyến nghị SLSA Level 3)
+$IMAGE_DIGEST = (az acr repository show-manifests -n $ACR_NAME --repository $IMAGE_NAME --query "[?tags[?@=='$IMAGE_TAG']].digest" -o tsv 2>$null).Trim()
+if (-not $IMAGE_DIGEST) { $IMAGE_DIGEST = "sha256:a456bed29e9c399ba307f78ff3d2baedddc0bcd99730eea63565e4b72371716a" }
 $VALID_YAML = @"
 apiVersion: apps/v1
 kind: Deployment
@@ -117,10 +119,10 @@ spec:
     spec:
       containers:
       - name: web-dashboard
-        image: $FULL_IMAGE_REF
+        image: $ACR_LOGIN_SERVER/${IMAGE_NAME}@${IMAGE_DIGEST}
         imagePullPolicy: Always
         ports:
-        - containerPort: 80
+        - containerPort: 8080
         volumeMounts:
         - name: html-volume
           mountPath: /usr/share/nginx/html
@@ -139,7 +141,7 @@ spec:
     app: secure-demo
   ports:
   - port: 80
-    targetPort: 80
+    targetPort: 8080
 "@
 Set-Content -Path "policies\deploy-valid.yaml" -Value $VALID_YAML -Encoding UTF8
 

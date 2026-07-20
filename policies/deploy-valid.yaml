@@ -1,4 +1,4 @@
-﻿apiVersion: apps/v1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: cloud-supply-chain-demo
@@ -16,10 +16,10 @@ spec:
     spec:
       containers:
       - name: web-dashboard
-        image: demobyta.azurecr.io/cloud-supply-chain-demo:v1
+        image: demobyta.azurecr.io/cloud-supply-chain-demo@sha256:a456bed29e9c399ba307f78ff3d2baedddc0bcd99730eea63565e4b72371716a
         imagePullPolicy: Always
         ports:
-        - containerPort: 80
+        - containerPort: 8080
         volumeMounts:
         - name: html-volume
           mountPath: /usr/share/nginx/html
@@ -38,4 +38,4 @@ spec:
     app: secure-demo
   ports:
   - port: 80
-    targetPort: 80
+    targetPort: 8080

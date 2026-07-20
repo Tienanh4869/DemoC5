@@ -1,4 +1,4 @@
-﻿apiVersion: kyverno.io/v1
+apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: verify-image-cosign-signature
@@ -24,6 +24,7 @@ spec:
       verifyImages:
         - imageReferences:
             - "*"
+          mutateDigest: false
           attestors:
             - entries:
                 - keys:
