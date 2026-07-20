@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-invalid-unsigned
+  labels:
+    app: demo-invalid
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-invalid
+  template:
+    metadata:
+      labels:
+        app: demo-invalid
+    spec:
+      containers:
+      - name: web
+        # Gi? l?p image l? t? ACR ho?c image chýa ðý?c k?
+        image: demobyta.azurecr.io/unauthorized-hacker-app:latest
+        imagePullPolicy: Always

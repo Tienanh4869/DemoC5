@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure Supply Chain Security Dashboard | SLSA • SBOM • Cosign</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Background Animated Gradient -->
+    <div class="glow-bg glow-1"></div>
+    <div class="glow-bg glow-2"></div>
+
+    <header class="navbar glass">
+        <div class="logo">
+            <span class="shield-icon">🛡️</span>
+            <div class="logo-text">
+                <h1>Azure Cloud-Native DevSecOps</h1>
+                <p>SLSA Framework • SBOM • Cosign Cryptographic Signatures</p>
+            </div>
+        </div>
+        <div class="badge-status verified">
+            <span class="pulse"></span>
+            VERIFIED BY AKS POLICY ENGINE
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Hero Status Banner -->
+        <section class="status-banner glass">
+            <div class="status-info">
+                <h2>Cấu Hình Bảo Mật Chuỗi Cung Ứng (Supply Chain)</h2>
+                <p>Container Image này đã trải qua quy trình quét lỗi (SBOM), tạo chứng nhận nguồn gốc (SLSA Level 3) và được ký số chữ ký mật mã bởi <strong>Cosign</strong> trước khi triển khai lên <strong>Azure Kubernetes Service (AKS)</strong>.</p>
+            </div>
+            <div class="action-box">
+                <button id="verifyBtn" class="btn-primary">
+                    <span>⚡ Kiểm Trực Tiếp Chữ Ký (Verify Live)</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Verification Live Terminal Overlay -->
+        <div id="terminalOverlay" class="terminal-box glass hidden">
+            <div class="terminal-header">
+                <span class="dot red"></span>
+                <span class="dot yellow"></span>
+                <span class="dot green"></span>
+                <span class="terminal-title">Cosign Verification Engine — Azure AKS Admission Controller</span>
+            </div>
+            <div id="terminalOutput" class="terminal-body font-mono"></div>
+        </div>
+
+        <!-- Dashboard Grid -->
+        <div class="grid-cards">
+            <!-- Card 1: SLSA Provenance -->
+            <div class="card glass">
+                <div class="card-header">
+                    <span class="card-icon">🔗</span>
+                    <h3>SLSA Provenance (Level 3)</h3>
+                </div>
+                <div class="card-body">
+                    <p class="desc">Bảo đảm tính nguyên vẹn từ mã nguồn đến bản build cuối cùng. Cách ly môi trường build chống giả mạo.</p>
+                    <ul class="meta-list font-mono">
+                        <li><strong>Build Engine:</strong> GitHub Actions OIDC / Azure DevOps</li>
+                        <li><strong>Source Repo:</strong> <code>github.com/azure-student/DemoC5</code></li>
+                        <li><strong>Commit SHA:</strong> <span class="hash">8f9b2d1c4e7a...</span></li>
+                        <li><strong>Build Type:</strong> <code>slsa-framework/github-actions-buildtypes/workflow/v1</code></li>
+                        <li><strong>Tamper Resistance:</strong> <span class="tag pass">PASSED (Non-falsifiable)</span></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Card 2: Cosign Cryptographic Signature -->
+            <div class="card glass">
+                <div class="card-header">
+                    <span class="card-icon">🔏</span>
+                    <h3>Chữ Ký Cosign (Sigstore)</h3>
+                </div>
+                <div class="card-body">
+                    <p class="desc">Chữ ký số xác thực nguồn gốc và đảm bảo Image không bị chỉnh sửa trái phép sau khi build.</p>
+                    <ul class="meta-list font-mono">
+                        <li><strong>Signature Algo:</strong> ECDSA-P256 / SHA-256</li>
+                        <li><strong>Public Key File:</strong> <code>keys/cosign.pub</code></li>
+                        <li><strong>OCI Artifact:</strong> <code>sha256-4e7a8f9b.sig</code></li>
+                        <li><strong>Registry:</strong> Azure Container Registry (ACR)</li>
+                        <li><strong>Policy Enforcement:</strong> <span class="tag pass">Kyverno Admission OK</span></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Card 3: Kubernetes Deployment Info -->
+            <div class="card glass">
+                <div class="card-header">
+                    <span class="card-icon">☸️</span>
+                    <h3>Runtime Metadata (Azure AKS)</h3>
+                </div>
+                <div class="card-body">
+                    <p class="desc">Thông tin trạng thái hiện tại của Container đang chạy trên cụm Azure Kubernetes Service.</p>
+                    <ul class="meta-list font-mono">
+                        <li><strong>Cluster ID:</strong> <code>aks-supply-chain-demo</code></li>
+                        <li><strong>Node Size:</strong> <code>Standard_B2s (Azure Student)</code></li>
+                        <li><strong>Container User:</strong> <code>nginx (UID: 101 - Non-Root)</code></li>
+                        <li><strong>Security Context:</strong> <code>readOnlyRootFilesystem: true</code></li>
+                        <li><strong>Uptime:</strong> <span id="uptimeCounter">00:00:00</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section: Interactive SBOM Table -->
+        <section class="sbom-section glass">
+            <div class="sbom-header">
+                <div>
+                    <h3>📦 Software Bill of Materials (SBOM — SPDX Format)</h3>
+                    <p>Danh sách chi tiết các gói (packages) và thư viện nền được quét bởi <strong>Syft / Trivy</strong>.</p>
+                </div>
+                <div class="search-box">
+                    <input type="text" id="sbomSearch" placeholder="🔍 Tìm kiếm package (VD: nginx, openssl...)" />
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="sbom-table">
+                    <thead>
+                        <tr>
+                            <th>Tên Package</th>
+                            <th>Phiên bản</th>
+                            <th>Hệ sinh thái</th>
+                            <th>Giấy phép (License)</th>
+                            <th>Tình trạng lỗ hổng (CVE)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sbomTableBody font-mono">
+                        <!-- Filled dynamically by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>Thực hiện bởi sinh viên môn Điện toán đám mây • Tài khoản Azure for Students • 2026</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
