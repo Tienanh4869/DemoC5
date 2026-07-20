@@ -1,4 +1,4 @@
-﻿# ĐỒ ÁN MÔN ĐIỆN TOÁN ĐÁM MÂY
+# ĐỒ ÁN MÔN ĐIỆN TOÁN ĐÁM MÂY
 ## Chủ đề: Xây dựng và triển khai Bảo mật Chuỗi cung ứng Phần mềm Cloud-Native (SLSA, SBOM, Cosign/Sigstore & Zero Trust Policy Enforcement trên Azure AKS)
 
 ---
@@ -93,28 +93,68 @@ kubectl run hacker-pod --image=nginx:latest
 
 ---
 
-## 6. Cấu Trúc Thư Mục Dự Án
+## 6. Chi Tiết Cấu Trúc Thư Mục & Phân Tích Ý Nghĩa Từng Thành Phần
+
+Dự án được tổ chức theo mô hình mô-đun hóa cao (`Modular Architecture`), tách biệt rõ ràng giữa tầng **Giao diện/Đóng gói ứng dụng (`app/`)**, tầng **Tự động hóa CI/CD (`.github/workflows/` & `scripts/`)**, tầng **Mật mã & Khóa bảo mật (`keys/`)**, và tầng **Thực thi Zero Trust trên Kubernetes (`policies/`)**.
 
 ```text
 DemoC5/
 ├── .github/workflows/
-│   └── slsa-cosign-pipeline.yml      # Luồng tự động hóa CI/CD trên GitHub Actions
-├── app/                              # Mã nguồn Web Dashboard bảo mật Nginx
-│   ├── index.html                    # Giao diện chính (Glassmorphism Dark Mode)
-│   ├── style.css                     # Stylesheet với hiệu ứng phát sáng
-│   ├── script.js                     # Script mô phỏng luồng kiểm tra chữ ký Cosign
-│   └── Dockerfile                    # Dockerfile chuẩn bảo mật Nginx Alpine Non-Root
-├── keys/                             # Cặp khóa mật mã Cosign ECDSA
-│   ├── cosign.key                    # Private Key (Khóa bí mật dùng ký Image)
-│   └── cosign.pub                    # Public Key (Khóa công khai cấu hình vào AKS)
-├── policies/                         # Các Manifest Kubernetes & Policy
-│   ├── verify-cosign-policy.yaml     # Kyverno ClusterPolicy phạm vi * (Enforce)
-│   ├── deploy-valid.yaml             # Deployment Image đã được ký hợp lệ (ALLOW)
-│   └── deploy-invalid.yaml           # Deployment Image giả mạo/chưa ký (DENY)
-├── scripts/                          # Bộ script tự động hóa PowerShell
-│   ├── 01-setup-azure.ps1            # Cấu hình biến môi trường & Registry
-│   ├── 02-build-sign.ps1             # Build trên Cloud ACR, Xuất SBOM & Ký Cosign
-│   └── 03-enforce-policy.ps1         # Nạp Kyverno, Áp dụng Policy & Test kịch bản
-├── README.md                         # Tài liệu tổng quan đồ án (File này)
-└── WORKFLOW_HUONG_DAN_SU_DUNG.md     # Kịch bản thuyết trình & chỉ tay tận mắt 3 màn hình
+│   └── slsa-cosign-pipeline.yml      # [Trụ cột 1+2+3] Luồng tự động hóa CI/CD GitHub Actions
+├── app/                              # [Test Payload] Ứng dụng Web mẫu & cấu hình Docker
+│   ├── index.html                    # Giao diện tĩnh tượng trưng (Symbolic Proof UI)
+│   ├── style.css                     # Stylesheet Glassmorphism Dark Mode
+│   ├── script.js                     # Script kiểm toán trạng thái bảo mật trong Console
+│   ├── nginx.conf                    # Cấu hình Nginx Non-Root lắng nghe cổng 8080
+│   └── Dockerfile                    # Kịch bản đóng gói Container chuẩn bảo mật Alpine Non-Root
+├── keys/                             # [Trụ cột 3] Cặp khóa mật mã Cosign ECDSA
+│   ├── cosign.key                    # Private Key (Khóa bí mật - Dùng để ký xác nhận Image)
+│   └── cosign.pub                    # Public Key (Khóa công khai - Nạp vào AKS để kiểm tra)
+├── policies/                         # [Zero Trust AKS] Khung chính sách Kyverno & Manifests
+│   ├── verify-cosign-policy.yaml     # Chính sách Zero Trust chém bay mọi Pod không có chữ ký
+│   ├── deploy-valid.yaml             # Manifest triển khai Pod chính chủ (Sử dụng sha256 digest)
+│   └── deploy-invalid.yaml           # Manifest kiểm thử tấn công (Pod lạ từ Docker Hub)
+├── scripts/                          # Bộ tự động hóa PowerShell cho máy cá nhân/bảo vệ trực tiếp
+│   ├── 01-setup-azure.ps1            # Khởi tạo Resource Group, ACR Registry & Cụm AKS
+│   ├── 02-build-sign.ps1             # Build Cloud, Quét SBOM Syft & Ký số Cosign
+│   └── 03-enforce-policy.ps1         # Cài đặt Kyverno, Áp dụng chính sách & Chạy 2 Test Case
+├── README.md                         # Tài liệu tổng quan kiến trúc đồ án (File này)
+├── WORKFLOW_HUONG_DAN_SU_DUNG.md     # Kịch bản thuyết trình chi tiết & phối hợp 3 màn hình
+└── KICH_BAN_THUYET_TRINH_DEMO.txt    # Tệp Notepad thuần túy phục vụ copy-paste & lời thoại nhanh
 ```
+
+---
+
+### 🔍 Phân Tích Kỹ Thuật Chuyên Sâu Từng Thư Mục & File Thành Phần:
+
+#### 1. Thư mục `.github/workflows/` — Tự động hóa CI/CD & SLSA Provenance
+* **`slsa-cosign-pipeline.yml`**: Là trái tim của tự động hóa chuỗi cung ứng trên đám mây. File YAML này định nghĩa quy trình **CI/CD Pipeline** chạy trên máy chủ GitHub Actions mỗi khi có thay đổi mã nguồn.
+  * **Trách nhiệm:** Đăng nhập an toàn vào Azure Container Registry (`demobyta.azurecr.io`) thông qua Secrets; đóng gói Docker Image; gọi công cụ **Syft** bóc tách xuất file `cloud-demo-sbom.json` (`SPDX-JSON`); và gọi công cụ **Cosign** sử dụng `COSIGN_PRIVATE_KEY` để ký số, đính kèm (`attest`) SBOM trực tiếp vào Registry.
+  * **Ý nghĩa thực tiễn:** Khẳng định việc bảo mật chuỗi cung ứng được tự động hóa 100%, không phụ thuộc thao tác thủ công, đạt chuẩn **SLSA Build Level 3**.
+
+#### 2. Thư mục `app/` — Đối tượng đích mẫu (Demo Payload) & Bảo mật Container lõi
+* **`Dockerfile`**: Áp dụng triết lý bảo mật từ gốc (`Secure by Design`). Sử dụng ảnh gốc siêu nhẹ `nginx:1.26-alpine` để giảm thiểu bề mặt tấn công (chỉ chứa các thư viện tối thiểu). Đặc biệt, cấu hình chạy dưới quyền người dùng **Non-Root (`USER nginx`)** thay vì `root`, ngăn chặn triệt để lỗ hổng leo thang đặc quyền nếu Container bị xâm nhập.
+* **`nginx.conf`**: Cấu hình máy chủ Web Nginx lắng nghe ở cổng **`8080`** (vì tài khoản Non-Root không có quyền mở các cổng hệ thống dưới 1024 như cổng 80). Tích hợp sẵn endpoint `/healthz` phục vụ cơ chế tự chẩn đoán liveness/readiness probe của Kubernetes.
+* **`index.html` / `style.css` / `script.js`**: Giao diện trực quan tượng trưng (Symbolic Proof UI) được mount vào Pod thông qua Kubernetes ConfigMap. Mục đích của trang Web không phải là làm giao diện phức tạp, mà để đóng vai trò là **Bằng chứng sống (Proof of Service Delivery)** minh chứng rằng: Pod sau khi vượt qua quy trình kiểm duyệt Zero Trust khắt khe của Kyverno vẫn vận hành mượt mà, tốc độ cao và phản hồi chính xác nội dung nghiệp vụ.
+
+#### 3. Thư mục `keys/` — Tầng Mật mã Bản quyền (Sigstore Cosign Keypair)
+* **`cosign.key` (Private Key - Khóa bí mật)**: Được mã hóa bằng mật khẩu (`AzureStudentDemoPassword123!`), giữ vai trò như "Con dấu bản quyền tối cao" của tổ chức phát triển phần mềm. Chỉ có hệ thống CI/CD hợp lệ mới được quyền truy cập khóa này để ký (`sign`) lên các Container Image sau khi build thành công.
+* **`cosign.pub` (Public Key - Khóa công khai)**: Khóa này được nạp thẳng vào bộ nhớ của máy chủ Azure Kubernetes Service (AKS) và đưa cho "Người gác cổng" Kyverno cầm. Khi bất kỳ ai ra lệnh chạy một Pod, Kyverno sẽ lấy khóa công khai này đối chiếu với chữ ký trên Azure Registry để xác minh xem Pod đó có đúng do chủ nhân của `cosign.key` tạo ra hay không.
+
+#### 4. Thư mục `policies/` — Tầng Thực thi Pháo đài Zero Trust trên Kubernetes
+* **`verify-cosign-policy.yaml`**: Manifest quan trọng nhất của mô hình Zero Trust Admission Control. Sử dụng Custom Resource Definition (`ClusterPolicy`) của **Kyverno**.
+  * **Cơ chế hoạt động:** Chặn ở cổng vào (`Admission Webhook`) trước khi Pod kịp sinh ra. Chính sách quy định tất cả Pod (`*`) triển khai vào cụm AKS bắt buộc phải có chữ ký hợp lệ (`verifyImages`) khớp với `cosign.pub`. Đồng thời thiết lập `mutateDigest: false` để giữ nguyên tính toàn vẹn và `validationFailureAction: Enforce` để tiêu diệt ngay lập tức (`DENY`) nếu phát hiện vi phạm.
+* **`deploy-valid.yaml`**: Manifest triển khai Pod ứng dụng hợp lệ (`cloud-supply-chain-demo`). Đặc biệt, thay vì dùng tag dễ bị làm giả như `:v1` hay `:latest`, file này sử dụng **Chính xác mã băm bất biến (Immutable SHA256 Digest)**: `@sha256:a456...`. Đây là tiêu chuẩn vàng của SLSA & Sigstore, giúp đảm bảo 1000% Pod chạy đúng phiên bản mã nguồn đã kiểm thử.
+* **`deploy-invalid.yaml`**: Manifest kịch bản kiểm thử tấn công (Test Payload). Cố tình ra lệnh cho AKS chạy một Image chuẩn từ mạng nhưng không có chữ ký của nhóm (`unauthorized-hacker-app:latest` hoặc `nginx:latest`) để chứng minh màng lọc Kyverno chém bay đầu virus trong 0.1 giây.
+
+#### 5. Thư mục `scripts/` — Bộ Công cụ Kịch bản Tự động hóa (PowerShell Automation)
+* **`01-setup-azure.ps1`**: Kịch bản chuẩn bị hạ tầng Cloud. Tự động kết nối Azure CLI, khởi tạo Nhóm tài nguyên (`rg-cloud-supply-chain-demo`), Registry (`demobyta`) và Cụm Kubernetes AKS (`aks-supply-chain-demo`). Sau đó tự động kết nối quyền truy cập (`az aks update --attach-acr`) để AKS có quyền kéo Image từ ACR.
+* **`02-build-sign.ps1`**: Kịch bản đóng vai trò như một môi trường CI/CD cục bộ trên máy cá nhân (giúp bạn chủ động báo cáo trực tiếp tại lớp trong 10-15 phút mà không sợ mạng chậm hay chờ đợi hàng đợi GitHub). Thực thi lệnh `az acr build` trên Cloud, tạo cặp khóa Cosign, xuất file SBOM chuẩn `SPDX-JSON` bằng Syft, và thực hiện ký số Cosign lên Registry.
+* **`03-enforce-policy.ps1`**: Kịch bản thực chiến Zero Trust trên Kubernetes. Tự động cài đặt Kyverno vào AKS thông qua Helm Chart, nạp chính sách `verify-cosign-policy.yaml`, nạp ConfigMap giao diện Web, sau đó lần lượt chạy tự động **2 Test Case thực chiến**:
+  * *Test Case 1 (Chặn Hacker):* Thử deploy `deploy-invalid.yaml` $\rightarrow$ Ghi nhận lỗi chém bay đầu (`DENY`).
+  * *Test Case 2 (Cho phép Hợp lệ):* Deploy `deploy-valid.yaml` với mã băm sha256 $\rightarrow$ Ghi nhận Pod khởi chạy thành công (`ALLOW`).
+
+#### 6. Các Tài liệu Hướng dẫn Khung (Root Documentation)
+* **`README.md`**: Tài liệu kỹ thuật tổng quan toàn diện, tổng hợp lý thuyết, sơ đồ kiến trúc, bảng đối chiếu 4 trụ cột và cẩm nang thao tác nhanh.
+* **`WORKFLOW_HUONG_DAN_SU_DUNG.md`**: Kịch bản đạo diễn chi tiết cho buổi bảo vệ đồ án. Chia làm 5 phần đắt giá kèm lời thoại cụ thể từng câu, hướng dẫn phối hợp nhịp nhàng giữa **3 Màn hình đỉnh cao** (GitHub Actions $\leftrightarrow$ PowerShell Terminal $\leftrightarrow$ Web Dashboard).
+* **`KICH_BAN_THUYET_TRINH_DEMO.txt`**: Phiên bản văn bản thuần (`ASCII/UTF-8 BOM`) tối ưu hóa để mở bằng Notepad trên Windows trong phòng bảo vệ. Giúp bạn copy-paste lệnh nhanh chóng và xem lời thoại không bị nhiễu định dạng Markdown.
